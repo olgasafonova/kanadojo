@@ -60,7 +60,7 @@ const App: React.FC = () => {
           }}
         >
           <img
-            src="/logo-enso-k.png"
+            src={`${import.meta.env.BASE_URL}logo-enso-k.png`}
             alt=""
             aria-hidden="true"
             style={{ width: 28, height: 28, borderRadius: 4 }}

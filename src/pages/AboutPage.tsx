@@ -12,7 +12,7 @@ export const AboutPage: React.FC = () => (
       }}
     >
       <img
-        src="/logo-enso-k.png"
+        src={`${import.meta.env.BASE_URL}logo-enso-k.png`}
         alt="KanaDojo logo — the letter K inside a Zen ensō circle"
         style={{ width: 160, height: 160, borderRadius: 20 }}
       />

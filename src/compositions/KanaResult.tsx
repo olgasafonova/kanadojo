@@ -271,7 +271,7 @@ export const KanaResult: React.FC<KanaResultProps> = ({
           kana.mnemonicImage && (
             <InkBrush delay={8}>
               <img
-                src={kana.mnemonicImage}
+                src={`${import.meta.env.BASE_URL}${kana.mnemonicImage}`}
                 alt={`Mnemonic for ${kana.char}`}
                 style={{
                   width: "100%",

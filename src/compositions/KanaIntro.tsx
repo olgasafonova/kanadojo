@@ -187,7 +187,7 @@ export const KanaIntro: React.FC<KanaIntroProps> = ({ kana }) => {
         {kana.mnemonicImage && (
           <InkBrush delay={6}>
             <img
-              src={kana.mnemonicImage}
+              src={`${import.meta.env.BASE_URL}${kana.mnemonicImage}`}
               alt={`Mnemonic for ${kana.char}`}
               style={{
                 width: "100%",
