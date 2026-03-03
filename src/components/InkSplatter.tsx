@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "remotion";
+import { useCurrentFrame, interpolate } from "remotion";
 
 interface Particle {
   angle: number;
@@ -46,7 +46,6 @@ export const InkSplatter: React.FC<InkSplatterProps> = ({
 }) => {
   const colorArray = Array.isArray(color) ? color : [color];
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
   const particles = generateParticles(count, seed);
 
   const elapsed = frame - triggerFrame;
