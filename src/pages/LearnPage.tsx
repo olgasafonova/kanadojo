@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
+import { Player } from "@remotion/player";
 import { hiragana, hiraganaGroups } from "../data/hiragana";
 import { katakana, katakanaGroups } from "../data/katakana";
-import { colors, font } from "../styles/tokens";
+import { KanaIntro } from "../compositions/KanaIntro";
+import { colors, font, timing } from "../styles/tokens";
 import { speakChar, speakWord } from "../utils/speech";
 import type { KanaChar, KanaMode } from "../data/types";
 
@@ -15,13 +17,11 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
 
   const [groupIdx, setGroupIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
-  const [animKey, setAnimKey] = useState(0);
 
   // Reset when switching kana mode
   useEffect(() => {
     setGroupIdx(0);
     setCharIdx(0);
-    setAnimKey((k) => k + 1);
   }, [kanaMode]);
 
   const group = groups[groupIdx];
@@ -35,7 +35,6 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
       setGroupIdx((g) => g + 1);
       setCharIdx(0);
     }
-    setAnimKey((k) => k + 1);
   }, [charIdx, groupChars.length, groupIdx, groups.length]);
 
   const goPrev = useCallback(() => {
@@ -47,7 +46,6 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
       const prevChars = chars.filter((k) => k.group === prevGroup.id);
       setCharIdx(prevChars.length - 1);
     }
-    setAnimKey((k) => k + 1);
   }, [charIdx, groupIdx, chars, groups]);
 
   // Keyboard navigation
@@ -85,7 +83,6 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
             onClick={() => {
               setGroupIdx(i);
               setCharIdx(0);
-              setAnimKey((k) => k + 1);
             }}
             style={{
               padding: "6px 14px",
@@ -106,127 +103,29 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
         ))}
       </div>
 
-      {/* Card */}
+      {/* Remotion Player card */}
       <div
-        key={animKey}
         style={{
-          background: colors.bgCard,
           borderRadius: 16,
+          overflow: "hidden",
           border: `1px solid rgba(255,255,255,0.08)`,
-          padding: 40,
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 48,
-          minHeight: 360,
-          animation: "fadeIn 0.4s ease-out",
         }}
       >
-        {/* Left: character */}
-        <div
+        <Player
+          key={`${kanaMode}-${currentChar.char}`}
+          component={KanaIntro}
+          inputProps={{ kana: currentChar }}
+          compositionWidth={760}
+          compositionHeight={360}
+          durationInFrames={timing.introFrames}
+          fps={timing.fps}
+          autoPlay
+          loop={false}
           style={{
-            flex: "0 0 auto",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            animation: "scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            width: "100%",
+            aspectRatio: "760 / 360",
           }}
-        >
-          <div
-            style={{
-              fontSize: 120,
-              fontFamily: font.japanese,
-              fontWeight: 700,
-              color: colors.character,
-              lineHeight: 1,
-            }}
-          >
-            {currentChar.char}
-          </div>
-          <div
-            style={{
-              fontSize: 22,
-              fontFamily: font.mono,
-              color: colors.romaji,
-              letterSpacing: 2,
-            }}
-          >
-            {currentChar.romaji}
-          </div>
-        </div>
-
-        {/* Right: mnemonic + example */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-            maxWidth: 400,
-          }}
-        >
-          {currentChar.mnemonicImage && (
-            <div style={{ animation: "slideUp 0.5s ease-out 0.1s both" }}>
-              <img
-                src={currentChar.mnemonicImage}
-                alt={`Mnemonic for ${currentChar.char}`}
-                style={{
-                  width: 180,
-                  height: 180,
-                  objectFit: "cover",
-                  borderRadius: 12,
-                  border: `1px solid rgba(255,255,255,0.1)`,
-                }}
-              />
-            </div>
-          )}
-
-          <div style={{ animation: "slideUp 0.5s ease-out 0.2s both" }}>
-            <div
-              style={{
-                fontFamily: font.japanese,
-                fontSize: 16,
-                color: colors.character,
-                lineHeight: 1.6,
-              }}
-            >
-              {currentChar.mnemonic}
-            </div>
-          </div>
-
-          <div style={{ animation: "slideUp 0.5s ease-out 0.3s both" }}>
-            <div
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                borderRadius: 8,
-                padding: "10px 16px",
-                display: "flex",
-                gap: 12,
-                alignItems: "baseline",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: font.japanese,
-                  fontSize: 22,
-                  color: colors.character,
-                }}
-              >
-                {currentChar.exampleWord}
-              </span>
-              <span
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 14,
-                  color: colors.romaji,
-                }}
-              >
-                ({currentChar.exampleMeaning})
-              </span>
-            </div>
-          </div>
-        </div>
+        />
       </div>
 
       {/* Controls */}
