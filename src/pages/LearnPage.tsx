@@ -67,9 +67,10 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
   if (!currentChar) return null;
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
       {/* Group selector */}
       <div
+        className="learn-controls"
         style={{
           display: "flex",
           gap: 8,
@@ -84,18 +85,22 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
               setGroupIdx(i);
               setCharIdx(0);
             }}
+            aria-pressed={i === groupIdx}
             style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "1px solid",
-              borderColor:
-                i === groupIdx ? colors.accent : "rgba(255,255,255,0.1)",
-              background:
-                i === groupIdx ? "rgba(232,184,48,0.15)" : "transparent",
+              padding: "6px 0",
+              borderRadius: 0,
+              border: "none",
+              borderBottom:
+                i === groupIdx
+                  ? `2px solid ${colors.accent}`
+                  : "2px solid transparent",
+              background: "none",
               color: i === groupIdx ? colors.accent : colors.romaji,
               fontFamily: font.mono,
-              fontSize: 13,
+              fontSize: 15,
+              fontWeight: i === groupIdx ? 700 : 400,
               cursor: "pointer",
+              letterSpacing: 0.5,
             }}
           >
             {g.label}
@@ -108,28 +113,29 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
         style={{
           borderRadius: 16,
           overflow: "hidden",
-          border: `1px solid rgba(255,255,255,0.08)`,
         }}
       >
         <Player
           key={`${kanaMode}-${currentChar.char}`}
           component={KanaIntro}
           inputProps={{ kana: currentChar }}
-          compositionWidth={760}
-          compositionHeight={360}
+          compositionWidth={920}
+          compositionHeight={480}
           durationInFrames={timing.introFrames}
           fps={timing.fps}
           autoPlay
           loop={false}
+          moveToBeginningWhenEnded={false}
           style={{
             width: "100%",
-            aspectRatio: "760 / 360",
+            aspectRatio: "920 / 480",
           }}
         />
       </div>
 
       {/* Controls */}
       <div
+        className="learn-controls"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -140,6 +146,7 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
       >
         <button
           onClick={goPrev}
+          aria-label="Previous character"
           style={navBtn}
           disabled={groupIdx === 0 && charIdx === 0}
         >
@@ -150,14 +157,14 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
           <button
             onClick={() => speakChar(currentChar.char, currentChar.romaji)}
             style={actionBtn}
-            title="Hear character"
+            aria-label={`Hear character ${currentChar.romaji}`}
           >
             🔊 {currentChar.char}
           </button>
           <button
             onClick={() => speakWord(currentChar.romaji, kanaMode)}
             style={actionBtn}
-            title="Hear example word"
+            aria-label={`Hear example word ${currentChar.exampleWord}`}
           >
             🔊 {currentChar.exampleWord}
           </button>
@@ -166,7 +173,7 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
         <span
           style={{
             fontFamily: font.mono,
-            fontSize: 13,
+            fontSize: 16,
             color: colors.romaji,
           }}
         >
@@ -175,6 +182,7 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
 
         <button
           onClick={goNext}
+          aria-label="Next character"
           style={navBtn}
           disabled={
             groupIdx === groups.length - 1 && charIdx === groupChars.length - 1
@@ -189,22 +197,29 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
 
 const navBtn: React.CSSProperties = {
   padding: "10px 20px",
-  borderRadius: 8,
-  border: `1px solid rgba(255,255,255,0.15)`,
-  background: "rgba(255,255,255,0.05)",
-  color: colors.character,
+  minHeight: 44,
+  borderRadius: 0,
+  border: "none",
+  borderBottom: `2px solid ${colors.romaji}`,
+  background: "none",
+  color: colors.romaji,
   fontFamily: font.mono,
-  fontSize: 14,
+  fontSize: 15,
+  fontWeight: 600,
   cursor: "pointer",
+  letterSpacing: 1,
+  textTransform: "uppercase",
 };
 
 const actionBtn: React.CSSProperties = {
-  padding: "8px 16px",
-  borderRadius: 8,
-  border: `1px solid ${colors.accent}`,
-  background: "rgba(232,184,48,0.1)",
+  padding: "10px 18px",
+  minHeight: 44,
+  borderRadius: 0,
+  border: "none",
+  borderBottom: `2px solid ${colors.accent}`,
+  background: "none",
   color: colors.accent,
   fontFamily: font.japanese,
-  fontSize: 15,
+  fontSize: 17,
   cursor: "pointer",
 };

@@ -71,6 +71,8 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({ belt, size = "md" }) => {
 
   return (
     <span
+      role="img"
+      aria-label={`${info.name} belt`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -81,6 +83,7 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({ belt, size = "md" }) => {
       }}
     >
       <span
+        aria-hidden="true"
         style={{
           width: dotSize,
           height: dotSize,

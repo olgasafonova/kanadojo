@@ -1,10 +1,4 @@
-import {
-  useCurrentFrame,
-  interpolate,
-  spring as remotionSpring,
-  useVideoConfig,
-} from "remotion";
-import { springConfig } from "../styles/tokens";
+import { useCurrentFrame } from "remotion";
 import type { CSSProperties, ReactNode } from "react";
 
 interface FadeUpProps {
@@ -21,19 +15,15 @@ export const FadeUp: React.FC<FadeUpProps> = ({
   style,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  const progress = remotionSpring({
-    frame: frame - delay,
-    fps,
-    config: {
-      stiffness: springConfig.stiffness,
-      damping: springConfig.damping,
-    },
-  });
+  const t = Math.max(0, frame - delay);
+  const duration = 20; // frames
+  const progress = Math.min(t / duration, 1);
+  // ease-out cubic — smooth deceleration, no bounce
+  const eased = 1 - Math.pow(1 - progress, 3);
 
-  const opacity = interpolate(progress, [0, 1], [0, 1]);
-  const y = interpolate(progress, [0, 1], [translateY, 0]);
+  const opacity = Math.min(eased * 1.5, 1);
+  const y = (1 - eased) * translateY * 0.4;
 
   return (
     <div style={{ opacity, transform: `translateY(${y}px)`, ...style }}>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Player } from "@remotion/player";
 import { hiragana } from "../data/hiragana";
 import { katakana } from "../data/katakana";
-import { colors, font } from "../styles/tokens";
+import { colors, font, timing } from "../styles/tokens";
 import { review, isDue, createRecord } from "../srs/sm2";
 import {
   getRecord,
@@ -9,6 +10,9 @@ import {
   getAllRecords,
   updateStreak,
 } from "../store/progress";
+import { KanaQuiz } from "../compositions/KanaQuiz";
+import { KanaResult } from "../compositions/KanaResult";
+import { playCorrectChime } from "../utils/chime";
 import type { KanaChar, KanaMode, Quality } from "../data/types";
 
 interface Props {
@@ -59,9 +63,8 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
     answer: string;
   } | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [timer, setTimer] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<number | null>(null);
 
   // Reset queue when switching kana mode
   useEffect(() => {
@@ -70,23 +73,11 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
     setInput("");
     setFeedback(null);
     setScore({ correct: 0, total: 0 });
-    setTimer(0);
+    setAnnouncement("");
   }, [kanaMode]);
 
   const current = queue[idx];
   const isFinished = idx >= queue.length;
-
-  // Start timer
-  useEffect(() => {
-    if (isFinished) return;
-    const start = Date.now();
-    timerRef.current = window.setInterval(() => {
-      setTimer((Date.now() - start) / 1000);
-    }, 100);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [idx, isFinished]);
 
   // Auto-focus input
   useEffect(() => {
@@ -107,6 +98,13 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
     saveRecord(updated);
     updateStreak();
 
+    if (correct) playCorrectChime();
+
+    setAnnouncement(
+      correct
+        ? `Correct! ${current.char} is ${current.romaji}`
+        : `Incorrect. ${current.char} is ${current.romaji}, you typed ${answer}`,
+    );
     setFeedback({ correct, answer: current.romaji });
     setScore((s) => ({
       correct: s.correct + (correct ? 1 : 0),
@@ -119,7 +117,6 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
         setFeedback(null);
         setInput("");
         setIdx((i) => i + 1);
-        setTimer(0);
       },
       correct ? 1500 : 3000,
     );
@@ -138,7 +135,6 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
     setInput("");
     setFeedback(null);
     setScore({ correct: 0, total: 0 });
-    setTimer(0);
   };
 
   if (isFinished) {
@@ -179,7 +175,7 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
               : "Practice makes perfect. Try again!"}
           </div>
           <button onClick={restart} style={restartBtn}>
-            Practice Again
+            Practice again
           </button>
         </div>
       </div>
@@ -188,32 +184,49 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
 
   return (
     <div style={container}>
-      {/* Timer */}
+      {/* Remotion Player: quiz character or feedback result */}
       <div
         style={{
-          fontFamily: font.mono,
-          fontSize: 24,
-          color: colors.romaji,
-          textAlign: "center",
-          marginBottom: 16,
-        }}
-      >
-        {timer.toFixed(1)}s
-      </div>
-
-      {/* Character */}
-      <div
-        style={{
-          fontSize: 140,
-          fontFamily: font.japanese,
-          fontWeight: 700,
-          color: colors.character,
-          textAlign: "center",
-          lineHeight: 1,
+          borderRadius: 16,
+          overflow: "hidden",
           marginBottom: 24,
         }}
       >
-        {current.char}
+        {feedback ? (
+          <Player
+            key={`result-${current.char}-${idx}`}
+            component={KanaResult}
+            inputProps={{
+              kana: current,
+              correct: feedback.correct,
+              userAnswer: feedback.correct ? undefined : input,
+            }}
+            compositionWidth={920}
+            compositionHeight={480}
+            durationInFrames={timing.feedbackFrames}
+            fps={timing.fps}
+            autoPlay
+            loop={false}
+            moveToBeginningWhenEnded={false}
+            style={{ width: "100%", aspectRatio: "920 / 480" }}
+          />
+        ) : (
+          <Player
+            key={`quiz-${current.char}-${idx}`}
+            component={KanaQuiz}
+            inputProps={{
+              char: current.char,
+            }}
+            compositionWidth={920}
+            compositionHeight={480}
+            durationInFrames={timing.quizFlashFrames}
+            fps={timing.fps}
+            autoPlay
+            loop={false}
+            moveToBeginningWhenEnded={false}
+            style={{ width: "100%", aspectRatio: "920 / 480" }}
+          />
+        )}
       </div>
 
       {/* Input */}
@@ -225,6 +238,7 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="type romaji..."
+          aria-label="Type the romaji reading for this character"
           disabled={!!feedback}
           autoComplete="off"
           autoCapitalize="off"
@@ -232,50 +246,35 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
             padding: "12px 24px",
             fontSize: 20,
             fontFamily: font.mono,
-            background: "rgba(255,255,255,0.06)",
-            border: `2px solid ${
+            background: "none",
+            border: "none",
+            borderBottom: `2px solid ${
               feedback
                 ? feedback.correct
                   ? colors.correct
                   : colors.wrong
-                : "rgba(255,255,255,0.15)"
+                : colors.romaji
             }`,
-            borderRadius: 12,
+            borderRadius: 0,
             color: colors.character,
             textAlign: "center",
             outline: "none",
-            width: 200,
+            width: "100%",
+            maxWidth: 280,
           }}
         />
       </div>
 
-      {/* Feedback */}
-      {feedback && (
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <span
-            style={{
-              display: "inline-block",
-              padding: "8px 20px",
-              borderRadius: 20,
-              fontFamily: font.mono,
-              fontSize: 15,
-              background: feedback.correct
-                ? "rgba(232,184,48,0.15)"
-                : "rgba(224,112,96,0.15)",
-              color: feedback.correct ? colors.correct : colors.wrong,
-              border: `1px solid ${feedback.correct ? colors.correct : colors.wrong}`,
-            }}
-          >
-            {feedback.correct ? "Correct!" : `${feedback.answer}`}
-          </span>
-        </div>
-      )}
+      {/* Live region for screen readers */}
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
 
       {/* Progress */}
       <div
         style={{
           fontFamily: font.mono,
-          fontSize: 13,
+          fontSize: 16,
           color: colors.romaji,
           textAlign: "center",
         }}
@@ -287,18 +286,22 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
 };
 
 const container: React.CSSProperties = {
-  maxWidth: 500,
+  maxWidth: 960,
   margin: "0 auto",
-  padding: "48px 16px",
+  padding: "24px 16px",
 };
 
 const restartBtn: React.CSSProperties = {
-  padding: "12px 32px",
-  borderRadius: 10,
-  border: `1px solid ${colors.accent}`,
-  background: "rgba(232,184,48,0.15)",
+  padding: "8px 0",
+  minHeight: 44,
+  borderRadius: 0,
+  border: "none",
+  borderBottom: `2px solid ${colors.accent}`,
+  background: "none",
   color: colors.accent,
   fontFamily: font.mono,
   fontSize: 16,
+  fontWeight: 600,
   cursor: "pointer",
+  letterSpacing: 1,
 };

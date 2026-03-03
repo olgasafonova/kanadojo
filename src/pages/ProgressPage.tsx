@@ -8,7 +8,8 @@ import {
   getDueCount,
 } from "../store/progress";
 import { isMastered } from "../srs/sm2";
-import { BeltBadge, BELTS, getCurrentBelt } from "../components/BeltBadge";
+import { BELTS, getCurrentBelt } from "../components/BeltBadge";
+import { KimonoBelt } from "../components/KimonoBelt";
 import type { KanaChar } from "../data/types";
 
 interface CharGridProps {
@@ -25,18 +26,19 @@ const CharGrid: React.FC<CharGridProps> = ({
   records,
 }) => (
   <div style={{ marginBottom: 24 }}>
-    <div
+    <h2
       style={{
         fontFamily: font.mono,
-        fontSize: 12,
+        fontSize: 18,
         textTransform: "uppercase" as const,
         letterSpacing: 2,
         color: colors.romaji,
-        marginBottom: 12,
+        marginBottom: 14,
+        fontWeight: 400,
       }}
     >
       {title}
-    </div>
+    </h2>
     {groups.map((group) => {
       const groupChars = chars.filter((k) => k.group === group.id);
       return (
@@ -62,16 +64,17 @@ const CharGrid: React.FC<CharGridProps> = ({
               <div
                 key={k.char}
                 title={`${k.char} (${k.romaji})`}
+                aria-label={`${k.romaji}: ${mastered ? "mastered" : seen ? "learning" : "not started"}`}
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 48,
+                  height: 48,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   background: bg,
                   borderRadius: 6,
-                  fontSize: 18,
+                  fontSize: 22,
                   fontFamily: font.japanese,
                   color: mastered || seen ? "#fff" : colors.romaji,
                   lineHeight: 1,
@@ -80,7 +83,7 @@ const CharGrid: React.FC<CharGridProps> = ({
                 <span>{k.char}</span>
                 <span
                   style={{
-                    fontSize: 8,
+                    fontSize: 12,
                     fontFamily: font.mono,
                     opacity: 0.7,
                   }}
@@ -113,13 +116,14 @@ export const ProgressPage: React.FC = () => {
       : 0;
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 16px" }}>
       {/* Stats row */}
       <div
+        className="stats-row"
         style={{
           display: "flex",
-          gap: 32,
-          marginBottom: 32,
+          gap: 40,
+          marginBottom: 40,
           flexWrap: "wrap",
         }}
       >
@@ -142,27 +146,30 @@ export const ProgressPage: React.FC = () => {
           value={dueCount}
           label="Due Today"
           color={colors.accentDecor}
+          tooltip="Characters scheduled for review by spaced repetition. Quiz them to keep your memory fresh."
         />
       </div>
 
-      {/* Belt cards */}
+      {/* Belt progression */}
       <div
+        className="belt-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-          gap: 12,
-          marginBottom: 32,
+          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+          gap: 16,
+          marginBottom: 40,
         }}
       >
         {BELTS.map((b) => {
           const isCurrent = b.id === belt.id;
-          const rangeText = b.max ? `${b.min} — ${b.max}` : `${b.min}+`;
+          const achieved = masteredCount >= b.min;
+          const rangeText = b.max ? `${b.min}–${b.max}` : `${b.min}+`;
           const progress =
             isCurrent && b.max
               ? Math.min(1, (masteredCount - b.min) / (b.max - b.min + 1))
               : isCurrent
                 ? 0.1
-                : masteredCount >= b.min
+                : achieved
                   ? 1
                   : 0;
 
@@ -170,32 +177,46 @@ export const ProgressPage: React.FC = () => {
             <div
               key={b.id}
               style={{
-                background: isCurrent
-                  ? "rgba(255,255,255,0.06)"
-                  : "rgba(255,255,255,0.02)",
-                border: `1px solid ${isCurrent ? b.color : "rgba(255,255,255,0.08)"}`,
-                borderRadius: 10,
-                padding: 16,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "20px 12px 16px",
+                opacity: achieved || isCurrent ? 1 : 0.35,
+                borderBottom: isCurrent
+                  ? `3px solid ${b.color}`
+                  : "3px solid transparent",
               }}
             >
-              <BeltBadge belt={b.id} size="sm" />
+              <KimonoBelt belt={b.id} size={80} />
               <div
                 style={{
                   fontFamily: font.mono,
-                  fontSize: 12,
-                  color: colors.romaji,
-                  marginTop: 8,
+                  fontSize: 17,
+                  fontWeight: isCurrent ? 700 : 400,
+                  color: isCurrent ? b.color : colors.character,
+                  marginTop: 12,
                 }}
               >
-                {rangeText} characters
+                {b.kanji} {b.name}
+              </div>
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 15,
+                  color: colors.romaji,
+                  marginTop: 4,
+                }}
+              >
+                {rangeText} chars
               </div>
               {isCurrent && (
                 <div
                   style={{
-                    marginTop: 8,
+                    marginTop: 10,
+                    width: "100%",
                     height: 4,
                     borderRadius: 2,
-                    background: "rgba(255,255,255,0.1)",
+                    background: colors.notStarted,
                     overflow: "hidden",
                   }}
                 >
@@ -215,73 +236,43 @@ export const ProgressPage: React.FC = () => {
         })}
       </div>
 
-      {/* Character grids */}
-      <CharGrid
-        title="Hiragana Overview"
-        chars={hiragana}
-        groups={hiraganaGroups}
-        records={records}
-      />
-      <CharGrid
-        title="Katakana Overview"
-        chars={katakana}
-        groups={katakanaGroups}
-        records={records}
-      />
+      {/* Character grids — side by side */}
+      <div
+        className="char-grids"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 32,
+        }}
+      >
+        <CharGrid
+          title="Hiragana Overview"
+          chars={hiragana}
+          groups={hiraganaGroups}
+          records={records}
+        />
+        <CharGrid
+          title="Katakana Overview"
+          chars={katakana}
+          groups={katakanaGroups}
+          records={records}
+        />
+      </div>
 
       {/* Legend */}
       <div
         style={{
           display: "flex",
-          gap: 16,
-          marginTop: 12,
+          gap: 20,
+          marginTop: 16,
           fontFamily: font.mono,
-          fontSize: 11,
+          fontSize: 16,
           color: colors.romaji,
         }}
       >
-        <span>
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: colors.mastered,
-              marginRight: 4,
-              verticalAlign: "middle",
-            }}
-          />
-          Mastered
-        </span>
-        <span>
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: colors.learning,
-              marginRight: 4,
-              verticalAlign: "middle",
-            }}
-          />
-          Learning
-        </span>
-        <span>
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: colors.notStarted,
-              marginRight: 4,
-              verticalAlign: "middle",
-            }}
-          />
-          Not started
-        </span>
+        <LegendItem color={colors.mastered} label="Mastered" />
+        <LegendItem color={colors.learning} label="Learning" />
+        <LegendItem color={colors.notStarted} label="Not started" />
       </div>
     </div>
   );
@@ -291,11 +282,12 @@ const StatBlock: React.FC<{
   value: string | number;
   label: string;
   color: string;
-}> = ({ value, label, color }) => (
-  <div>
+  tooltip?: string;
+}> = ({ value, label, color, tooltip }) => (
+  <div title={tooltip}>
     <div
       style={{
-        fontSize: 36,
+        fontSize: 44,
         fontFamily: font.mono,
         fontWeight: 700,
         color,
@@ -306,15 +298,36 @@ const StatBlock: React.FC<{
     </div>
     <div
       style={{
-        fontSize: 12,
+        fontSize: 17,
         fontFamily: font.mono,
         textTransform: "uppercase" as const,
-        letterSpacing: 1,
+        letterSpacing: 1.5,
         color: colors.romaji,
-        marginTop: 4,
+        marginTop: 6,
       }}
     >
       {label}
     </div>
   </div>
+);
+
+const LegendItem: React.FC<{ color: string; label: string }> = ({
+  color,
+  label,
+}) => (
+  <span>
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: 12,
+        height: 12,
+        borderRadius: 2,
+        background: color,
+        marginRight: 6,
+        verticalAlign: "middle",
+      }}
+    />
+    {label}
+  </span>
 );

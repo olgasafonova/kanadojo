@@ -1,7 +1,13 @@
-import { AbsoluteFill } from "remotion";
+import {
+  AbsoluteFill,
+  useCurrentFrame,
+  interpolate,
+  useVideoConfig,
+  spring as remotionSpring,
+} from "remotion";
 import { FadeUp } from "../components/FadeUp";
-import { KanaCharacter } from "../components/KanaCharacter";
-import { TypewriterText } from "../components/TypewriterText";
+import { InkBrush } from "../components/InkBrush";
+import { InkSplatter } from "../components/InkSplatter";
 import { colors, font } from "../styles/tokens";
 import type { KanaChar } from "../data/types";
 
@@ -10,95 +16,155 @@ interface KanaIntroProps {
 }
 
 export const KanaIntro: React.FC<KanaIntroProps> = ({ kana }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Character entrance
+  const charProgress = remotionSpring({
+    frame,
+    fps,
+    config: { stiffness: 100, damping: 14 },
+  });
+  const charScale = interpolate(charProgress, [0, 1], [0.3, 1]);
+  const charOpacity = interpolate(charProgress, [0, 0.4], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  const charRotate = interpolate(charProgress, [0, 1], [-8, 0]);
+
+  // Glow pulse
+  const glowOpacity = interpolate(frame, [12, 20, 35], [0, 0.6, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Romaji fade
+  const romajiOpacity = interpolate(frame, [10, 18], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const romajiY = interpolate(frame, [10, 18], [12, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   return (
     <AbsoluteFill
       style={{
         background: colors.bgCard,
         display: "flex",
         flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 40,
-        gap: 48,
+        alignItems: "stretch",
         borderRadius: 16,
         overflow: "hidden",
       }}
     >
-      {/* Left: character */}
+      {/* Left column: character + text info */}
       <div
         style={{
-          flex: "0 0 auto",
+          flex: "0 0 240px",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: "32px 28px",
+          gap: 20,
         }}
       >
-        <KanaCharacter char={kana.char} romaji={kana.romaji} size={120} />
-      </div>
+        {/* Character */}
+        <div style={{ position: "relative" }}>
+          <InkSplatter
+            triggerFrame={6}
+            count={28}
+            seed={kana.char.charCodeAt(0)}
+            color="rgba(232, 184, 48, 0.6)"
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 140,
+              height: 140,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${colors.accentDecor}40, transparent 70%)`,
+              opacity: glowOpacity,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              fontSize: 110,
+              fontFamily: font.japanese,
+              fontWeight: font.weightBold,
+              color: colors.character,
+              lineHeight: 1,
+              transform: `scale(${charScale}) rotate(${charRotate}deg)`,
+              opacity: charOpacity,
+              textShadow: `0 2px 24px rgba(232,184,48,${glowOpacity * 0.5})`,
+            }}
+          >
+            {kana.char}
+          </div>
+        </div>
 
-      {/* Right: mnemonic + example */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-          maxWidth: 400,
-        }}
-      >
-        {kana.mnemonicImage && (
-          <FadeUp delay={10}>
-            <img
-              src={kana.mnemonicImage}
-              alt={`Mnemonic for ${kana.char} (${kana.romaji})`}
-              style={{
-                width: 180,
-                height: 180,
-                objectFit: "cover",
-                borderRadius: 12,
-                border: `1px solid rgba(255,255,255,0.1)`,
-              }}
-            />
-          </FadeUp>
-        )}
+        {/* Romaji */}
+        <div
+          style={{
+            fontSize: 24,
+            fontFamily: font.mono,
+            color: colors.romaji,
+            letterSpacing: 3,
+            opacity: romajiOpacity,
+            transform: `translateY(${romajiY}px)`,
+          }}
+        >
+          {kana.romaji}
+        </div>
 
-        <FadeUp delay={15}>
+        {/* Mnemonic text */}
+        <FadeUp delay={18}>
           <div
             style={{
               fontFamily: font.japanese,
-              fontSize: 16,
+              fontSize: 14,
               color: colors.character,
-              lineHeight: 1.5,
+              lineHeight: 1.6,
+              opacity: 0.85,
+              textAlign: "left",
             }}
           >
             {kana.mnemonic}
           </div>
         </FadeUp>
 
-        <FadeUp delay={25}>
+        {/* Example word */}
+        <FadeUp delay={28}>
           <div
             style={{
-              background: "rgba(255,255,255,0.06)",
+              background: "rgba(255,255,255,0.05)",
               borderRadius: 8,
-              padding: "10px 16px",
+              padding: "8px 14px",
               display: "flex",
-              gap: 12,
-              alignItems: "baseline",
+              flexDirection: "column",
+              gap: 2,
+              border: "1px solid rgba(255,255,255,0.04)",
             }}
           >
-            <TypewriterText
-              text={kana.exampleWord}
-              startFrame={30}
+            <span
               style={{
                 fontFamily: font.japanese,
-                fontSize: 22,
+                fontSize: 20,
                 color: colors.character,
+                whiteSpace: "nowrap",
               }}
-            />
+            >
+              {kana.exampleWord}
+            </span>
             <span
               style={{
                 fontFamily: font.mono,
-                fontSize: 14,
+                fontSize: 12,
                 color: colors.romaji,
               }}
             >
@@ -106,6 +172,34 @@ export const KanaIntro: React.FC<KanaIntroProps> = ({ kana }) => {
             </span>
           </div>
         </FadeUp>
+      </div>
+
+      {/* Right column: mnemonic image — the hero */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        }}
+      >
+        {kana.mnemonicImage && (
+          <InkBrush delay={6}>
+            <img
+              src={kana.mnemonicImage}
+              alt={`Mnemonic for ${kana.char}`}
+              style={{
+                width: "100%",
+                height: "100%",
+                maxWidth: 420,
+                maxHeight: 420,
+                objectFit: "contain",
+                borderRadius: 14,
+              }}
+            />
+          </InkBrush>
+        )}
       </div>
     </AbsoluteFill>
   );

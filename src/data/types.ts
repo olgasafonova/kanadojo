@@ -33,4 +33,4 @@ export interface BeltInfo {
 
 export type KanaMode = "hiragana" | "katakana";
 
-export type Page = "learn" | "quiz" | "progress";
+export type Page = "learn" | "quiz" | "progress" | "about";

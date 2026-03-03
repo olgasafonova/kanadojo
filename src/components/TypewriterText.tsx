@@ -1,4 +1,4 @@
-import { useCurrentFrame } from "remotion";
+import { useCurrentFrame, interpolate } from "remotion";
 import type { CSSProperties } from "react";
 import { font, colors } from "../styles/tokens";
 
@@ -12,7 +12,7 @@ interface TypewriterTextProps {
 export const TypewriterText: React.FC<TypewriterTextProps> = ({
   text,
   startFrame = 0,
-  charsPerFrame = 0.75,
+  charsPerFrame = 0.5,
   style,
 }) => {
   const frame = useCurrentFrame();
@@ -21,21 +21,23 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
     Math.floor(elapsed * charsPerFrame),
     text.length,
   );
-  const isComplete = visibleChars >= text.length;
-  const isActive = elapsed > 0 && !isComplete;
 
   if (elapsed <= 0) return null;
+
+  const opacity = interpolate(elapsed, [0, 6], [0, 1], {
+    extrapolateRight: "clamp",
+  });
 
   return (
     <span
       style={{
         fontFamily: font.mono,
         color: colors.romaji,
+        opacity,
         ...style,
       }}
     >
       {text.slice(0, visibleChars)}
-      {isActive && <span style={{ opacity: 0.7 }}>|</span>}
     </span>
   );
 };
