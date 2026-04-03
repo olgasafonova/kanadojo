@@ -65,7 +65,16 @@ const App: React.FC = () => {
             aria-hidden="true"
             style={{ width: 28, height: 28, borderRadius: 4 }}
           />
-          Kana<span style={{ color: colors.accentDecor }}>Dojo</span>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "inherit",
+              fontWeight: "inherit",
+              fontFamily: "inherit",
+            }}
+          >
+            Kana<span style={{ color: colors.accentDecor }}>Dojo</span>
+          </h1>
         </div>
 
         {/* Kana mode toggle */}
@@ -88,12 +97,15 @@ const App: React.FC = () => {
                 onClick={() => setKanaMode(mode)}
                 aria-pressed={kanaMode === mode}
                 style={{
-                  padding: "4px 0",
+                  padding: "8px 12px",
+                  minHeight: 44,
                   border: "none",
                   background: "none",
                   color: kanaMode === mode ? colors.accent : colors.romaji,
                   fontFamily: font.mono,
                   fontSize: 15,
+                  display: "flex",
+                  alignItems: "center",
                   fontWeight: kanaMode === mode ? 700 : 400,
                   cursor: "pointer",
                 }}
@@ -159,6 +171,18 @@ const App: React.FC = () => {
         {page === "progress" && <ProgressPage />}
         {page === "about" && <AboutPage />}
       </main>
+
+      <footer
+        style={{
+          padding: "16px",
+          textAlign: "center",
+          fontSize: 12,
+          color: colors.romaji,
+          fontFamily: font.mono,
+        }}
+      >
+        KanaDojo - Japanese Character Training
+      </footer>
     </div>
   );
 };
