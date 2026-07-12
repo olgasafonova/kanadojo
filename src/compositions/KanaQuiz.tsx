@@ -10,13 +10,17 @@ import { colors, font } from "../styles/tokens";
 
 interface KanaQuizProps {
   char: string;
+  hint?: string;
 }
 
 /**
  * Quiz flash composition: the character drops in with a dramatic
  * scale + blur entrance, then settles. No timer, no stress.
  */
-export const KanaQuiz: React.FC<KanaQuizProps> = ({ char }) => {
+export const KanaQuiz: React.FC<KanaQuizProps> = ({
+  char,
+  hint = "type the romaji",
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -91,7 +95,7 @@ export const KanaQuiz: React.FC<KanaQuizProps> = ({ char }) => {
           letterSpacing: 2,
         }}
       >
-        type the romaji
+        {hint}
       </div>
     </AbsoluteFill>
   );

@@ -2,31 +2,48 @@ import { useState, useCallback, useEffect } from "react";
 import { Player } from "@remotion/player";
 import { hiragana, hiraganaGroups } from "../data/hiragana";
 import { katakana, katakanaGroups } from "../data/katakana";
+import { kanji, kanjiGroups, kanjiId } from "../data/kanji";
 import { KanaIntro } from "../compositions/KanaIntro";
+import { KanjiIntro } from "../compositions/KanjiIntro";
+import { KunOnHelp } from "../components/KunOnHelp";
 import { colors, font, timing } from "../styles/tokens";
-import { speakChar, speakWord } from "../utils/speech";
-import type { KanaChar, KanaMode } from "../data/types";
+import {
+  speakChar,
+  speakWord,
+  speakKanjiReading,
+  speakKanjiWord,
+} from "../utils/speech";
+import type { KanaChar, KanjiChar, Mode } from "../data/types";
 
 interface Props {
-  kanaMode: KanaMode;
+  mode: Mode;
 }
 
-export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
-  const chars = kanaMode === "hiragana" ? hiragana : katakana;
-  const groups = kanaMode === "hiragana" ? hiraganaGroups : katakanaGroups;
+export const LearnPage: React.FC<Props> = ({ mode }) => {
+  const isKanji = mode === "kanji";
+  const chars: (KanaChar | KanjiChar)[] = isKanji
+    ? kanji
+    : mode === "hiragana"
+      ? hiragana
+      : katakana;
+  const groups = isKanji
+    ? kanjiGroups
+    : mode === "hiragana"
+      ? hiraganaGroups
+      : katakanaGroups;
 
   const [groupIdx, setGroupIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
 
-  // Reset when switching kana mode
+  // Reset when switching mode
   useEffect(() => {
     setGroupIdx(0);
     setCharIdx(0);
-  }, [kanaMode]);
+  }, [mode]);
 
   const group = groups[groupIdx];
   const groupChars = chars.filter((k) => k.group === group.id);
-  const currentChar: KanaChar | undefined = groupChars[charIdx];
+  const currentChar = groupChars[charIdx];
 
   const goNext = useCallback(() => {
     if (charIdx < groupChars.length - 1) {
@@ -115,22 +132,35 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
           overflow: "hidden",
         }}
       >
-        <Player
-          key={`${kanaMode}-${currentChar.char}`}
-          component={KanaIntro}
-          inputProps={{ kana: currentChar }}
-          compositionWidth={920}
-          compositionHeight={480}
-          durationInFrames={timing.introFrames}
-          fps={timing.fps}
-          autoPlay
-          loop={false}
-          moveToBeginningWhenEnded={false}
-          style={{
-            width: "100%",
-            aspectRatio: "920 / 480",
-          }}
-        />
+        {isKanji ? (
+          <Player
+            key={`kanji-${currentChar.char}`}
+            component={KanjiIntro}
+            inputProps={{ kanji: currentChar as KanjiChar }}
+            compositionWidth={920}
+            compositionHeight={480}
+            durationInFrames={timing.introFrames}
+            fps={timing.fps}
+            autoPlay
+            loop={false}
+            moveToBeginningWhenEnded={false}
+            style={{ width: "100%", aspectRatio: "920 / 480" }}
+          />
+        ) : (
+          <Player
+            key={`${mode}-${currentChar.char}`}
+            component={KanaIntro}
+            inputProps={{ kana: currentChar as KanaChar }}
+            compositionWidth={920}
+            compositionHeight={480}
+            durationInFrames={timing.introFrames}
+            fps={timing.fps}
+            autoPlay
+            loop={false}
+            moveToBeginningWhenEnded={false}
+            style={{ width: "100%", aspectRatio: "920 / 480" }}
+          />
+        )}
       </div>
 
       {/* Controls */}
@@ -153,22 +183,50 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
           ← Prev
         </button>
 
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            onClick={() => speakChar(currentChar.char, currentChar.romaji)}
-            style={actionBtn}
-            aria-label={`Hear character ${currentChar.romaji}`}
-          >
-            🔊 {currentChar.char}
-          </button>
-          <button
-            onClick={() => speakWord(currentChar.romaji, kanaMode)}
-            style={actionBtn}
-            aria-label={`Hear example word ${currentChar.exampleWord}`}
-          >
-            🔊 {currentChar.exampleWord}
-          </button>
-        </div>
+        {isKanji ? (
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() =>
+                speakKanjiReading(kanjiId(currentChar as KanjiChar))
+              }
+              style={actionBtn}
+              aria-label={`Hear the reading of ${currentChar.char}`}
+            >
+              🔊 {currentChar.char}
+            </button>
+            <button
+              onClick={() => speakKanjiWord(kanjiId(currentChar as KanjiChar))}
+              style={actionBtn}
+              aria-label={`Hear example word ${currentChar.exampleWord}`}
+            >
+              🔊 {currentChar.exampleWord}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() =>
+                speakChar(currentChar.char, (currentChar as KanaChar).romaji)
+              }
+              style={actionBtn}
+              aria-label={`Hear character ${(currentChar as KanaChar).romaji}`}
+            >
+              🔊 {currentChar.char}
+            </button>
+            <button
+              onClick={() =>
+                speakWord(
+                  (currentChar as KanaChar).romaji,
+                  mode as "hiragana" | "katakana",
+                )
+              }
+              style={actionBtn}
+              aria-label={`Hear example word ${currentChar.exampleWord}`}
+            >
+              🔊 {currentChar.exampleWord}
+            </button>
+          </div>
+        )}
 
         <span
           style={{
@@ -191,6 +249,8 @@ export const LearnPage: React.FC<Props> = ({ kanaMode }) => {
           Next →
         </button>
       </div>
+
+      {isKanji && <KunOnHelp />}
     </div>
   );
 };

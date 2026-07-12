@@ -6,11 +6,11 @@ import { AboutPage } from "./pages/AboutPage";
 import { BeltBadge, getCurrentBelt } from "./components/BeltBadge";
 import { getMasteredCount } from "./store/progress";
 import { colors, font } from "./styles/tokens";
-import type { KanaMode, Page } from "./data/types";
+import type { Mode, Page } from "./data/types";
 
 const App: React.FC = () => {
   const [page, setPage] = useState<Page>("learn");
-  const [kanaMode, setKanaMode] = useState<KanaMode>("hiragana");
+  const [mode, setMode] = useState<Mode>("hiragana");
   const mastered = getMasteredCount();
   const belt = getCurrentBelt(mastered);
 
@@ -77,10 +77,10 @@ const App: React.FC = () => {
           </h1>
         </div>
 
-        {/* Kana mode toggle */}
+        {/* Mode toggle */}
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {(["hiragana", "katakana"] as KanaMode[]).map((mode, i) => (
-            <span key={mode} style={{ display: "flex", alignItems: "center" }}>
+          {(["hiragana", "katakana", "kanji"] as Mode[]).map((m, i) => (
+            <span key={m} style={{ display: "flex", alignItems: "center" }}>
               {i > 0 && (
                 <span
                   style={{
@@ -94,23 +94,27 @@ const App: React.FC = () => {
                 </span>
               )}
               <button
-                onClick={() => setKanaMode(mode)}
-                aria-pressed={kanaMode === mode}
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
                 style={{
                   padding: "8px 12px",
                   minHeight: 44,
                   border: "none",
                   background: "none",
-                  color: kanaMode === mode ? colors.accent : colors.romaji,
+                  color: mode === m ? colors.accent : colors.romaji,
                   fontFamily: font.mono,
                   fontSize: 15,
                   display: "flex",
                   alignItems: "center",
-                  fontWeight: kanaMode === mode ? 700 : 400,
+                  fontWeight: mode === m ? 700 : 400,
                   cursor: "pointer",
                 }}
               >
-                {mode === "hiragana" ? "あ Hiragana" : "ア Katakana"}
+                {m === "hiragana"
+                  ? "あ Hiragana"
+                  : m === "katakana"
+                    ? "ア Katakana"
+                    : "漢 Kanji"}
               </button>
             </span>
           ))}
@@ -166,8 +170,8 @@ const App: React.FC = () => {
 
       {/* Page content */}
       <main id="main-content">
-        {page === "learn" && <LearnPage kanaMode={kanaMode} />}
-        {page === "quiz" && <QuizPage kanaMode={kanaMode} />}
+        {page === "learn" && <LearnPage mode={mode} />}
+        {page === "quiz" && <QuizPage mode={mode} />}
         {page === "progress" && <ProgressPage />}
         {page === "about" && <AboutPage />}
       </main>

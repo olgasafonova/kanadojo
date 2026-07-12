@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Player } from "@remotion/player";
 import { hiragana } from "../data/hiragana";
 import { katakana } from "../data/katakana";
+import { kanji } from "../data/kanji";
 import { colors, font, timing } from "../styles/tokens";
 import { review, isDue, createRecord } from "../srs/sm2";
 import {
@@ -12,11 +13,33 @@ import {
 } from "../store/progress";
 import { KanaQuiz } from "../compositions/KanaQuiz";
 import { KanaResult } from "../compositions/KanaResult";
+import { KanjiResult } from "../compositions/KanjiResult";
 import { playCorrectChime } from "../utils/chime";
-import type { KanaChar, KanaMode, Quality } from "../data/types";
+import type { KanaChar, KanjiChar, Mode, Quality } from "../data/types";
 
 interface Props {
-  kanaMode: KanaMode;
+  mode: Mode;
+}
+
+type QuizItem = KanaChar | KanjiChar;
+
+function isKanjiItem(item: QuizItem): item is KanjiChar {
+  return (item as KanjiChar).meaning !== undefined;
+}
+
+/** The accepted answer(s) for an item, lowercased for comparison. */
+function acceptedAnswers(item: QuizItem): string[] {
+  if (isKanjiItem(item)) {
+    return [item.meaning, ...(item.altMeanings ?? [])].map((m) =>
+      m.toLowerCase().trim(),
+    );
+  }
+  return [item.romaji.toLowerCase().trim()];
+}
+
+/** The canonical answer to reveal after a miss. */
+function canonicalAnswer(item: QuizItem): string {
+  return isKanjiItem(item) ? item.meaning : item.romaji;
 }
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -28,8 +51,13 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-function getQuizQueue(mode: KanaMode): KanaChar[] {
-  const chars = mode === "hiragana" ? hiragana : katakana;
+function poolForMode(mode: Mode): QuizItem[] {
+  if (mode === "kanji") return kanji;
+  return mode === "hiragana" ? hiragana : katakana;
+}
+
+function getQuizQueue(mode: Mode): QuizItem[] {
+  const chars = poolForMode(mode);
   const records = getAllRecords();
 
   // Priority 1: due for review
@@ -54,27 +82,30 @@ function getQuizQueue(mode: KanaMode): KanaChar[] {
   ];
 }
 
-export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
-  const [queue, setQueue] = useState<KanaChar[]>(() => getQuizQueue(kanaMode));
+export const QuizPage: React.FC<Props> = ({ mode }) => {
+  const [queue, setQueue] = useState<QuizItem[]>(() => getQuizQueue(mode));
   const [idx, setIdx] = useState(0);
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState<{
     correct: boolean;
     answer: string;
+    typed: string;
   } | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [announcement, setAnnouncement] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset queue when switching kana mode
+  const isKanji = mode === "kanji";
+
+  // Reset queue when switching mode
   useEffect(() => {
-    setQueue(getQuizQueue(kanaMode));
+    setQueue(getQuizQueue(mode));
     setIdx(0);
     setInput("");
     setFeedback(null);
     setScore({ correct: 0, total: 0 });
     setAnnouncement("");
-  }, [kanaMode]);
+  }, [mode]);
 
   const current = queue[idx];
   const isFinished = idx >= queue.length;
@@ -89,9 +120,10 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
   const submit = useCallback(() => {
     if (!current || feedback) return;
 
-    const answer = input.trim().toLowerCase();
-    const correct = answer === current.romaji;
+    const typed = input.trim().toLowerCase();
+    const correct = acceptedAnswers(current).includes(typed);
     const quality: Quality = correct ? 2 : 0;
+    const answer = canonicalAnswer(current);
 
     const record = getRecord(current.char) || createRecord(current.char);
     const updated = review(record, quality);
@@ -102,10 +134,10 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
 
     setAnnouncement(
       correct
-        ? `Correct! ${current.char} is ${current.romaji}`
-        : `Incorrect. ${current.char} is ${current.romaji}, you typed ${answer}`,
+        ? `Correct! ${current.char} is ${answer}`
+        : `Incorrect. ${current.char} is ${answer}, you typed ${typed}`,
     );
-    setFeedback({ correct, answer: current.romaji });
+    setFeedback({ correct, answer, typed });
     setScore((s) => ({
       correct: s.correct + (correct ? 1 : 0),
       total: s.total + 1,
@@ -130,7 +162,7 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
   };
 
   const restart = () => {
-    setQueue(getQuizQueue(kanaMode));
+    setQueue(getQuizQueue(mode));
     setIdx(0);
     setInput("");
     setFeedback(null);
@@ -193,29 +225,50 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
         }}
       >
         {feedback ? (
-          <Player
-            key={`result-${current.char}-${idx}`}
-            component={KanaResult}
-            inputProps={{
-              kana: current,
-              correct: feedback.correct,
-              userAnswer: feedback.correct ? undefined : input,
-            }}
-            compositionWidth={920}
-            compositionHeight={480}
-            durationInFrames={timing.feedbackFrames}
-            fps={timing.fps}
-            autoPlay
-            loop={false}
-            moveToBeginningWhenEnded={false}
-            style={{ width: "100%", aspectRatio: "920 / 480" }}
-          />
+          isKanji ? (
+            <Player
+              key={`result-${current.char}-${idx}`}
+              component={KanjiResult}
+              inputProps={{
+                kanji: current as KanjiChar,
+                correct: feedback.correct,
+                userAnswer: feedback.correct ? undefined : feedback.typed,
+              }}
+              compositionWidth={920}
+              compositionHeight={480}
+              durationInFrames={timing.feedbackFrames}
+              fps={timing.fps}
+              autoPlay
+              loop={false}
+              moveToBeginningWhenEnded={false}
+              style={{ width: "100%", aspectRatio: "920 / 480" }}
+            />
+          ) : (
+            <Player
+              key={`result-${current.char}-${idx}`}
+              component={KanaResult}
+              inputProps={{
+                kana: current as KanaChar,
+                correct: feedback.correct,
+                userAnswer: feedback.correct ? undefined : feedback.typed,
+              }}
+              compositionWidth={920}
+              compositionHeight={480}
+              durationInFrames={timing.feedbackFrames}
+              fps={timing.fps}
+              autoPlay
+              loop={false}
+              moveToBeginningWhenEnded={false}
+              style={{ width: "100%", aspectRatio: "920 / 480" }}
+            />
+          )
         ) : (
           <Player
             key={`quiz-${current.char}-${idx}`}
             component={KanaQuiz}
             inputProps={{
               char: current.char,
+              hint: isKanji ? "type the meaning" : "type the romaji",
             }}
             compositionWidth={920}
             compositionHeight={480}
@@ -237,8 +290,12 @@ export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="type romaji..."
-          aria-label="Type the romaji reading for this character"
+          placeholder={isKanji ? "type meaning..." : "type romaji..."}
+          aria-label={
+            isKanji
+              ? "Type the English meaning for this kanji"
+              : "Type the romaji reading for this character"
+          }
           disabled={!!feedback}
           autoComplete="off"
           autoCapitalize="off"

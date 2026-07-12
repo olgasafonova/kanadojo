@@ -1,5 +1,6 @@
 import { hiragana, hiraganaGroups } from "../data/hiragana";
 import { katakana, katakanaGroups } from "../data/katakana";
+import { kanji, kanjiGroups } from "../data/kanji";
 import { colors, font } from "../styles/tokens";
 import {
   getAllRecords,
@@ -10,13 +11,20 @@ import {
 import { isMastered } from "../srs/sm2";
 import { BELTS, getCurrentBelt } from "../components/BeltBadge";
 import { KimonoBelt } from "../components/KimonoBelt";
-import type { KanaChar } from "../data/types";
+
+interface GridItem {
+  char: string;
+  group: string;
+  sub: string; // subtitle shown under the char (romaji or meaning)
+  label: string; // accessible label / tooltip
+}
 
 interface CharGridProps {
   title: string;
-  chars: KanaChar[];
+  chars: GridItem[];
   groups: { id: string; label: string; chars: string }[];
   records: Record<string, import("../data/types").ReviewRecord>;
+  showSub?: boolean; // hide the subtitle when it's too long (kanji meanings)
 }
 
 const CharGrid: React.FC<CharGridProps> = ({
@@ -24,6 +32,7 @@ const CharGrid: React.FC<CharGridProps> = ({
   chars,
   groups,
   records,
+  showSub = true,
 }) => (
   <div style={{ marginBottom: 24 }}>
     <h2
@@ -63,8 +72,8 @@ const CharGrid: React.FC<CharGridProps> = ({
             return (
               <div
                 key={k.char}
-                title={`${k.char} (${k.romaji})`}
-                aria-label={`${k.romaji}: ${mastered ? "mastered" : seen ? "learning" : "not started"}`}
+                title={`${k.char} (${k.label})`}
+                aria-label={`${k.label}: ${mastered ? "mastered" : seen ? "learning" : "not started"}`}
                 style={{
                   width: 48,
                   height: 48,
@@ -74,22 +83,24 @@ const CharGrid: React.FC<CharGridProps> = ({
                   justifyContent: "center",
                   background: bg,
                   borderRadius: 6,
-                  fontSize: 22,
+                  fontSize: showSub ? 22 : 26,
                   fontFamily: font.japanese,
                   color: mastered || seen ? "#fff" : colors.romaji,
                   lineHeight: 1,
                 }}
               >
                 <span>{k.char}</span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: font.mono,
-                    opacity: 0.7,
-                  }}
-                >
-                  {k.romaji}
-                </span>
+                {showSub && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontFamily: font.mono,
+                      opacity: 0.7,
+                    }}
+                  >
+                    {k.sub}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -236,7 +247,7 @@ export const ProgressPage: React.FC = () => {
         })}
       </div>
 
-      {/* Character grids — side by side */}
+      {/* Character grids — kana side by side */}
       <div
         className="char-grids"
         style={{
@@ -247,15 +258,41 @@ export const ProgressPage: React.FC = () => {
       >
         <CharGrid
           title="Hiragana Overview"
-          chars={hiragana}
+          chars={hiragana.map((k) => ({
+            char: k.char,
+            group: k.group,
+            sub: k.romaji,
+            label: k.romaji,
+          }))}
           groups={hiraganaGroups}
           records={records}
         />
         <CharGrid
           title="Katakana Overview"
-          chars={katakana}
+          chars={katakana.map((k) => ({
+            char: k.char,
+            group: k.group,
+            sub: k.romaji,
+            label: k.romaji,
+          }))}
           groups={katakanaGroups}
           records={records}
+        />
+      </div>
+
+      {/* Kanji overview — full width */}
+      <div style={{ marginTop: 8 }}>
+        <CharGrid
+          title="Kanji Overview"
+          chars={kanji.map((k) => ({
+            char: k.char,
+            group: k.group,
+            sub: k.meaning,
+            label: k.meaning,
+          }))}
+          groups={kanjiGroups}
+          records={records}
+          showSub={false}
         />
       </div>
 
