@@ -69,7 +69,7 @@ export const AboutPage: React.FC = () => (
       using the SM-2 spaced repetition algorithm, surfacing characters right at
       the edge of forgetting.{" "}
       <strong style={{ color: colors.character }}>Progress</strong> shows your
-      mastery grid and belt rank, from white (0 chars) to black (121+). The grid
+      mastery grid and belt rank, from white (0 chars) to black (86+). The grid
       is honest. Grey squares don't lie.
     </Section>
 

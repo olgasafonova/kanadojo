@@ -10,7 +10,7 @@ A free, browser-based trainer for the 92 hiragana and katakana characters. Anima
 
 - **Learn** — walk through characters one group at a time with animated mnemonics and audio pronunciation
 - **Quiz** — test recall using SM-2 spaced repetition, surfacing characters right at the edge of forgetting
-- **Progress** — mastery grid and belt rank from white (0 chars) to black (121+)
+- **Progress** — mastery grid and belt rank from white (0 chars) to black (86+)
 - **Mnemonics** — every character has a visual memory hook generated with AI
 
 ## Built with
