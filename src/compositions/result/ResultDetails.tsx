@@ -3,6 +3,43 @@ import { InkSplatter } from "../../components/InkSplatter";
 import { colors, font } from "../../styles/tokens";
 import type { KanaChar } from "../../data/types";
 
+/** Typed answer and mnemonic hint, revealed only on a miss. */
+const MissHints: React.FC<{
+  kana: KanaChar;
+  userAnswer?: string;
+  opacity: number;
+}> = ({ kana, userAnswer, opacity }) => (
+  <>
+    {userAnswer && (
+      <div
+        style={{
+          marginTop: 6,
+          fontFamily: font.mono,
+          fontSize: 14,
+          color: colors.romaji,
+          opacity,
+        }}
+      >
+        You typed: <span style={{ color: colors.wrong }}>{userAnswer}</span>
+      </div>
+    )}
+    <div
+      style={{
+        marginTop: 8,
+        fontFamily: font.japanese,
+        fontSize: 14,
+        color: colors.romaji,
+        lineHeight: 1.5,
+        opacity,
+        textAlign: "center",
+        maxWidth: 220,
+      }}
+    >
+      {kana.mnemonic}
+    </div>
+  </>
+);
+
 interface ResultDetailsProps {
   kana: KanaChar;
   correct: boolean;
@@ -117,37 +154,8 @@ export const ResultDetails: React.FC<ResultDetailsProps> = ({
         {correct ? "Correct!" : `It's ${kana.romaji}`}
       </div>
 
-      {/* Wrong answer: show what user typed */}
-      {!correct && userAnswer && (
-        <div
-          style={{
-            marginTop: 6,
-            fontFamily: font.mono,
-            fontSize: 14,
-            color: colors.romaji,
-            opacity: hintOpacity,
-          }}
-        >
-          You typed: <span style={{ color: colors.wrong }}>{userAnswer}</span>
-        </div>
-      )}
-
-      {/* Mnemonic text hint */}
       {!correct && (
-        <div
-          style={{
-            marginTop: 8,
-            fontFamily: font.japanese,
-            fontSize: 14,
-            color: colors.romaji,
-            lineHeight: 1.5,
-            opacity: hintOpacity,
-            textAlign: "center",
-            maxWidth: 220,
-          }}
-        >
-          {kana.mnemonic}
-        </div>
+        <MissHints kana={kana} userAnswer={userAnswer} opacity={hintOpacity} />
       )}
     </div>
   );
