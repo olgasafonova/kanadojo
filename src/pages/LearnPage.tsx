@@ -1,162 +1,37 @@
-import { useState, useCallback, useEffect } from "react";
-import { Player } from "@remotion/player";
-import { hiragana, hiraganaGroups } from "../data/hiragana";
-import { katakana, katakanaGroups } from "../data/katakana";
-import { kanji, kanjiGroups, kanjiId } from "../data/kanji";
-import { KanaIntro } from "../compositions/KanaIntro";
-import { KanjiIntro } from "../compositions/KanjiIntro";
 import { KunOnHelp } from "../components/KunOnHelp";
-import { colors, font, timing } from "../styles/tokens";
-import {
-  speakChar,
-  speakWord,
-  speakKanjiReading,
-  speakKanjiWord,
-} from "../utils/speech";
-import type { KanaChar, KanjiChar, Mode } from "../data/types";
+import { colors, font } from "../styles/tokens";
+import { catalogForMode } from "./learn/catalog";
+import { useLearnNavigation } from "./learn/navigation";
+import { GroupSelector } from "./learn/GroupSelector";
+import { IntroPlayer } from "./learn/IntroPlayer";
+import { SpeakButtons } from "./learn/SpeakButtons";
+import type { Mode } from "../data/types";
 
 interface Props {
   mode: Mode;
 }
 
 export const LearnPage: React.FC<Props> = ({ mode }) => {
-  const isKanji = mode === "kanji";
-  const chars: (KanaChar | KanjiChar)[] = isKanji
-    ? kanji
-    : mode === "hiragana"
-      ? hiragana
-      : katakana;
-  const groups = isKanji
-    ? kanjiGroups
-    : mode === "hiragana"
-      ? hiraganaGroups
-      : katakanaGroups;
-
   // Mode changes remount the page via key={mode} in App, so no reset effect.
-  const [groupIdx, setGroupIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(0);
-
-  const group = groups[groupIdx];
-  const groupChars = chars.filter((k) => k.group === group.id);
-  const currentChar = groupChars[charIdx];
-
-  const goNext = useCallback(() => {
-    if (charIdx < groupChars.length - 1) {
-      setCharIdx((i) => i + 1);
-    } else if (groupIdx < groups.length - 1) {
-      setGroupIdx((g) => g + 1);
-      setCharIdx(0);
-    }
-  }, [charIdx, groupChars.length, groupIdx, groups.length]);
-
-  const goPrev = useCallback(() => {
-    if (charIdx > 0) {
-      setCharIdx((i) => i - 1);
-    } else if (groupIdx > 0) {
-      setGroupIdx((g) => g - 1);
-      const prevGroup = groups[groupIdx - 1];
-      const prevChars = chars.filter((k) => k.group === prevGroup.id);
-      setCharIdx(prevChars.length - 1);
-    }
-  }, [charIdx, groupIdx, chars, groups]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === " ") {
-        e.preventDefault();
-        goNext();
-      }
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        goPrev();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev]);
+  const { chars, groups } = catalogForMode(mode);
+  const nav = useLearnNavigation(chars, groups);
+  const { groupIdx, charIdx, groupChars, currentChar } = nav;
 
   if (!currentChar) return null;
 
+  const atStart = groupIdx === 0 && charIdx === 0;
+  const atEnd =
+    groupIdx === groups.length - 1 && charIdx === groupChars.length - 1;
+
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
-      {/* Group selector */}
-      <div
-        className="learn-controls"
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-          marginBottom: 24,
-        }}
-      >
-        {groups.map((g, i) => (
-          <button
-            key={g.id}
-            onClick={() => {
-              setGroupIdx(i);
-              setCharIdx(0);
-            }}
-            aria-pressed={i === groupIdx}
-            style={{
-              padding: "6px 0",
-              borderRadius: 0,
-              border: "none",
-              borderBottom:
-                i === groupIdx
-                  ? `2px solid ${colors.accent}`
-                  : "2px solid transparent",
-              background: "none",
-              color: i === groupIdx ? colors.accent : colors.romaji,
-              fontFamily: font.mono,
-              fontSize: 15,
-              fontWeight: i === groupIdx ? 700 : 400,
-              cursor: "pointer",
-              letterSpacing: 0.5,
-            }}
-          >
-            {g.label}
-          </button>
-        ))}
-      </div>
+      <GroupSelector
+        groups={groups}
+        groupIdx={groupIdx}
+        onSelect={nav.selectGroup}
+      />
 
-      {/* Remotion Player card */}
-      <div
-        style={{
-          borderRadius: 16,
-          overflow: "hidden",
-        }}
-      >
-        {isKanji ? (
-          <Player
-            key={`kanji-${currentChar.char}`}
-            component={KanjiIntro}
-            inputProps={{ kanji: currentChar as KanjiChar }}
-            compositionWidth={920}
-            compositionHeight={480}
-            durationInFrames={timing.introFrames}
-            fps={timing.fps}
-            autoPlay
-            loop={false}
-            moveToBeginningWhenEnded={false}
-            style={{ width: "100%", aspectRatio: "920 / 480" }}
-          />
-        ) : (
-          <Player
-            key={`${mode}-${currentChar.char}`}
-            component={KanaIntro}
-            inputProps={{ kana: currentChar as KanaChar }}
-            compositionWidth={920}
-            compositionHeight={480}
-            durationInFrames={timing.introFrames}
-            fps={timing.fps}
-            autoPlay
-            loop={false}
-            moveToBeginningWhenEnded={false}
-            style={{ width: "100%", aspectRatio: "920 / 480" }}
-          />
-        )}
-      </div>
+      <IntroPlayer mode={mode} currentChar={currentChar} />
 
       {/* Controls */}
       <div
@@ -170,58 +45,15 @@ export const LearnPage: React.FC<Props> = ({ mode }) => {
         }}
       >
         <button
-          onClick={goPrev}
+          onClick={nav.goPrev}
           aria-label="Previous character"
           style={navBtn}
-          disabled={groupIdx === 0 && charIdx === 0}
+          disabled={atStart}
         >
           ← Prev
         </button>
 
-        {isKanji ? (
-          <div style={{ display: "flex", gap: 12 }}>
-            <button
-              onClick={() =>
-                speakKanjiReading(kanjiId(currentChar as KanjiChar))
-              }
-              style={actionBtn}
-              aria-label={`Hear the reading of ${currentChar.char}`}
-            >
-              🔊 {currentChar.char}
-            </button>
-            <button
-              onClick={() => speakKanjiWord(kanjiId(currentChar as KanjiChar))}
-              style={actionBtn}
-              aria-label={`Hear example word ${currentChar.exampleWord}`}
-            >
-              🔊 {currentChar.exampleWord}
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 12 }}>
-            <button
-              onClick={() =>
-                speakChar(currentChar.char, (currentChar as KanaChar).romaji)
-              }
-              style={actionBtn}
-              aria-label={`Hear character ${(currentChar as KanaChar).romaji}`}
-            >
-              🔊 {currentChar.char}
-            </button>
-            <button
-              onClick={() =>
-                speakWord(
-                  (currentChar as KanaChar).romaji,
-                  mode as "hiragana" | "katakana",
-                )
-              }
-              style={actionBtn}
-              aria-label={`Hear example word ${currentChar.exampleWord}`}
-            >
-              🔊 {currentChar.exampleWord}
-            </button>
-          </div>
-        )}
+        <SpeakButtons mode={mode} currentChar={currentChar} />
 
         <span
           style={{
@@ -234,18 +66,16 @@ export const LearnPage: React.FC<Props> = ({ mode }) => {
         </span>
 
         <button
-          onClick={goNext}
+          onClick={nav.goNext}
           aria-label="Next character"
           style={navBtn}
-          disabled={
-            groupIdx === groups.length - 1 && charIdx === groupChars.length - 1
-          }
+          disabled={atEnd}
         >
           Next →
         </button>
       </div>
 
-      {isKanji && <KunOnHelp />}
+      {mode === "kanji" && <KunOnHelp />}
     </div>
   );
 };
@@ -264,17 +94,4 @@ const navBtn: React.CSSProperties = {
   cursor: "pointer",
   letterSpacing: 1,
   textTransform: "uppercase",
-};
-
-const actionBtn: React.CSSProperties = {
-  padding: "10px 18px",
-  minHeight: 44,
-  borderRadius: 0,
-  border: "none",
-  borderBottom: `2px solid ${colors.accent}`,
-  background: "none",
-  color: colors.accent,
-  fontFamily: font.japanese,
-  fontSize: 17,
-  cursor: "pointer",
 };
