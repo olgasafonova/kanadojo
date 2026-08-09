@@ -7,8 +7,18 @@ import {
 import { InkSplatter } from "../../components/InkSplatter";
 import { colors, font } from "../../styles/tokens";
 
-/** The animated kanji character with ink splatter and glow pulse. */
-export const KanjiGlyph: React.FC<{ char: string }> = ({ char }) => {
+interface CharGlyphProps {
+  char: string;
+  fontSize?: number;
+  glowSize?: number;
+}
+
+/** The animated character with ink splatter and glow pulse. */
+export const CharGlyph: React.FC<CharGlyphProps> = ({
+  char,
+  fontSize = 100,
+  glowSize = 130,
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -41,8 +51,8 @@ export const KanjiGlyph: React.FC<{ char: string }> = ({ char }) => {
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 130,
-          height: 130,
+          width: glowSize,
+          height: glowSize,
           borderRadius: "50%",
           background: `radial-gradient(circle, ${colors.accentDecor}40, transparent 70%)`,
           opacity: glowOpacity,
@@ -51,7 +61,7 @@ export const KanjiGlyph: React.FC<{ char: string }> = ({ char }) => {
       />
       <div
         style={{
-          fontSize: 100,
+          fontSize,
           fontFamily: font.japanese,
           fontWeight: font.weightBold,
           color: colors.character,

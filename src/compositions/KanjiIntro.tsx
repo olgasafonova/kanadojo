@@ -1,6 +1,6 @@
 import { AbsoluteFill } from "remotion";
 import { colors } from "../styles/tokens";
-import { KanjiGlyph } from "./intro/KanjiGlyph";
+import { CharGlyph } from "./intro/CharGlyph";
 import { KanjiInfo } from "./intro/KanjiInfo";
 import { MnemonicImage } from "./intro/MnemonicImage";
 import type { KanjiChar } from "../data/types";
@@ -32,7 +32,7 @@ export const KanjiIntro: React.FC<KanjiIntroProps> = ({ kanji }) => (
         gap: 14,
       }}
     >
-      <KanjiGlyph char={kanji.char} />
+      <CharGlyph char={kanji.char} />
       <KanjiInfo kanji={kanji} />
     </div>
 
