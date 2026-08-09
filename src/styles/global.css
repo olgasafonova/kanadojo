@@ -127,6 +127,10 @@ input[type="number"]::-webkit-outer-spin-button {
     gap: 12px !important;
   }
 
+  .kunon-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .stats-row {
     gap: 24px !important;
   }

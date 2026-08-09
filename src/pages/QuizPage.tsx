@@ -1,162 +1,91 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { colors, font } from "../styles/tokens";
-import { review, createRecord } from "../srs/sm2";
-import { getRecord, saveRecord, updateStreak } from "../store/progress";
-import { playCorrectChime } from "../utils/chime";
-import { getQuizQueue } from "./quiz/queue";
+import { getQuizQueue, type QuizItem } from "./quiz/queue";
+import {
+  gradeAnswer,
+  persistAnswer,
+  announcementFor,
+  feedbackDelayMs,
+} from "./quiz/grading";
 import { QuizFinished } from "./quiz/QuizFinished";
-import { QuizStage } from "./quiz/QuizStage";
-import type { KanaChar, KanaMode, Quality } from "../data/types";
+import { QuizStage, type Feedback } from "./quiz/QuizStage";
+import type { Mode } from "../data/types";
 
 interface Props {
-  kanaMode: KanaMode;
+  mode: Mode;
 }
 
-export const QuizPage: React.FC<Props> = ({ kanaMode }) => {
-  const [queue, setQueue] = useState<KanaChar[]>(() => getQuizQueue(kanaMode));
+export const QuizPage: React.FC<Props> = ({ mode }) => {
+  const [queue, setQueue] = useState<QuizItem[]>(() => getQuizQueue(mode));
   const [idx, setIdx] = useState(0);
   const [input, setInput] = useState("");
-  const [feedback, setFeedback] = useState<{
-    correct: boolean;
-    answer: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [announcement, setAnnouncement] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const reset = useCallback((mode: KanaMode) => {
+  // Mode changes remount the page via key={mode} in App, so no reset effect.
+  const reset = useCallback(() => {
     setQueue(getQuizQueue(mode));
     setIdx(0);
     setInput("");
     setFeedback(null);
     setScore({ correct: 0, total: 0 });
     setAnnouncement("");
-  }, []);
-
-  // Reset queue when switching kana mode
-  useEffect(() => {
-    reset(kanaMode);
-  }, [kanaMode, reset]);
+  }, [mode]);
 
   const current = queue[idx];
   const isFinished = idx >= queue.length;
 
   // Auto-focus input
   useEffect(() => {
-    if (!feedback && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (!feedback) inputRef.current?.focus();
   }, [feedback, idx]);
+
+  const advance = useCallback(() => {
+    setFeedback(null);
+    setInput("");
+    setIdx((i) => i + 1);
+  }, []);
 
   const submit = useCallback(() => {
     if (!current || feedback) return;
 
-    const answer = input.trim().toLowerCase();
-    const correct = answer === current.romaji;
-    const quality: Quality = correct ? 2 : 0;
+    const graded = gradeAnswer(current, input);
+    persistAnswer(current.char, graded.correct);
 
-    const record = getRecord(current.char) || createRecord(current.char);
-    const updated = review(record, quality);
-    saveRecord(updated);
-    updateStreak();
-
-    if (correct) playCorrectChime();
-
-    setAnnouncement(
-      correct
-        ? `Correct! ${current.char} is ${current.romaji}`
-        : `Incorrect. ${current.char} is ${current.romaji}, you typed ${answer}`,
-    );
-    setFeedback({ correct, answer: current.romaji });
+    setAnnouncement(announcementFor(current.char, graded));
+    setFeedback(graded);
     setScore((s) => ({
-      correct: s.correct + (correct ? 1 : 0),
+      correct: s.correct + (graded.correct ? 1 : 0),
       total: s.total + 1,
     }));
 
-    // Auto-advance after feedback
-    setTimeout(
-      () => {
-        setFeedback(null);
-        setInput("");
-        setIdx((i) => i + 1);
-      },
-      correct ? 1500 : 3000,
-    );
-  }, [current, input, feedback]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submit();
-    }
-  };
+    setTimeout(advance, feedbackDelayMs(graded.correct));
+  }, [current, input, feedback, advance]);
 
   if (isFinished) {
     return (
       <QuizFinished
         correct={score.correct}
         total={score.total}
-        onRestart={() => reset(kanaMode)}
+        onRestart={reset}
       />
     );
   }
 
   return (
     <div style={container}>
-      <QuizStage current={current} idx={idx} feedback={feedback} input={input} />
-
-      {/* Input */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="type romaji..."
-          aria-label="Type the romaji reading for this character"
-          disabled={!!feedback}
-          autoComplete="off"
-          autoCapitalize="off"
-          style={{
-            padding: "12px 24px",
-            fontSize: 20,
-            fontFamily: font.mono,
-            background: "none",
-            border: "none",
-            borderBottom: `2px solid ${
-              feedback
-                ? feedback.correct
-                  ? colors.correct
-                  : colors.wrong
-                : colors.romaji
-            }`,
-            borderRadius: 0,
-            color: colors.character,
-            textAlign: "center",
-            outline: "none",
-            width: "100%",
-            maxWidth: 280,
-          }}
-        />
-      </div>
-
-      {/* Live region for screen readers */}
-      <div aria-live="polite" className="sr-only">
-        {announcement}
-      </div>
-
-      {/* Progress */}
-      <div
-        style={{
-          fontFamily: font.mono,
-          fontSize: 16,
-          color: colors.romaji,
-          textAlign: "center",
-        }}
-      >
-        {idx + 1} / {queue.length}
-      </div>
+      <QuizStage
+        current={current}
+        idx={idx}
+        queueLength={queue.length}
+        feedback={feedback}
+        input={input}
+        announcement={announcement}
+        inputRef={inputRef}
+        onInputChange={setInput}
+        onSubmit={submit}
+      />
     </div>
   );
 };
