@@ -8,312 +8,19 @@ import {
   getMasteredCount,
   getDueCount,
 } from "../store/progress";
-import { isMastered } from "../srs/sm2";
 import { BELTS, getCurrentBelt } from "../data/belts";
-import { KimonoBelt } from "../components/KimonoBelt";
+import { CharGrid } from "./progress/CharGrid";
+import { BeltCard } from "./progress/BeltCard";
+import type { ReviewRecord } from "../data/types";
 
-interface GridItem {
-  char: string;
-  group: string;
-  sub: string; // subtitle shown under the char (romaji or meaning)
-  label: string; // accessible label / tooltip
-}
-
-interface CharGridProps {
-  title: string;
-  chars: GridItem[];
-  groups: { id: string; label: string; chars: string }[];
-  records: Record<string, import("../data/types").ReviewRecord>;
-  showSub?: boolean; // hide the subtitle when it's too long (kanji meanings)
-}
-
-const CharGrid: React.FC<CharGridProps> = ({
-  title,
-  chars,
-  groups,
-  records,
-  showSub = true,
-}) => (
-  <div style={{ marginBottom: 24 }}>
-    <h2
-      style={{
-        fontFamily: font.mono,
-        fontSize: 18,
-        textTransform: "uppercase" as const,
-        letterSpacing: 2,
-        color: colors.romaji,
-        marginBottom: 14,
-        fontWeight: 400,
-      }}
-    >
-      {title}
-    </h2>
-    {groups.map((group) => {
-      const groupChars = chars.filter((k) => k.group === group.id);
-      return (
-        <div
-          key={group.id}
-          style={{
-            display: "flex",
-            gap: 6,
-            marginBottom: 6,
-            flexWrap: "wrap",
-          }}
-        >
-          {groupChars.map((k) => {
-            const rec = records[k.char];
-            const mastered = rec && isMastered(rec);
-            const seen = !!rec;
-            const bg = mastered
-              ? colors.mastered
-              : seen
-                ? colors.learning
-                : colors.notStarted;
-            return (
-              <div
-                key={k.char}
-                title={`${k.char} (${k.label})`}
-                aria-label={`${k.label}: ${mastered ? "mastered" : seen ? "learning" : "not started"}`}
-                style={{
-                  width: 48,
-                  height: 48,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: bg,
-                  borderRadius: 6,
-                  fontSize: showSub ? 22 : 26,
-                  fontFamily: font.japanese,
-                  color: mastered || seen ? "#fff" : colors.romaji,
-                  lineHeight: 1,
-                }}
-              >
-                <span>{k.char}</span>
-                {showSub && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontFamily: font.mono,
-                      opacity: 0.7,
-                    }}
-                  >
-                    {k.sub}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      );
-    })}
-  </div>
-);
-
-export const ProgressPage: React.FC = () => {
-  const records = getAllRecords();
-  const streak = getStreak();
-  const masteredCount = getMasteredCount();
-  const dueCount = getDueCount();
-  const belt = getCurrentBelt(masteredCount);
+function accuracyPercent(records: Record<string, ReviewRecord>): number {
   const totalSeen = Object.keys(records).length;
-  const accuracy =
-    totalSeen > 0
-      ? Math.round(
-          (Object.values(records).filter((r) => r.lastQuality >= 1).length /
-            totalSeen) *
-            100,
-        )
-      : 0;
-
-  return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 16px" }}>
-      {/* Stats row */}
-      <div
-        className="stats-row"
-        style={{
-          display: "flex",
-          gap: 40,
-          marginBottom: 40,
-          flexWrap: "wrap",
-        }}
-      >
-        <StatBlock
-          value={masteredCount}
-          label="Mastered"
-          color={colors.accent}
-        />
-        <StatBlock
-          value={streak.count}
-          label="Day Streak"
-          color={colors.accent}
-        />
-        <StatBlock
-          value={`${accuracy}%`}
-          label="Accuracy"
-          color={colors.accent}
-        />
-        <StatBlock
-          value={dueCount}
-          label="Due Today"
-          color={colors.accentDecor}
-          tooltip="Characters scheduled for review by spaced repetition. Quiz them to keep your memory fresh."
-        />
-      </div>
-
-      {/* Belt progression */}
-      <div
-        className="belt-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          gap: 16,
-          marginBottom: 40,
-        }}
-      >
-        {BELTS.map((b) => {
-          const isCurrent = b.id === belt.id;
-          const achieved = masteredCount >= b.min;
-          const rangeText = b.max ? `${b.min}–${b.max}` : `${b.min}+`;
-          const progress =
-            isCurrent && b.max
-              ? Math.min(1, (masteredCount - b.min) / (b.max - b.min + 1))
-              : isCurrent
-                ? 0.1
-                : achieved
-                  ? 1
-                  : 0;
-
-          return (
-            <div
-              key={b.id}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: "20px 12px 16px",
-                opacity: achieved || isCurrent ? 1 : 0.35,
-                borderBottom: isCurrent
-                  ? `3px solid ${b.color}`
-                  : "3px solid transparent",
-              }}
-            >
-              <KimonoBelt belt={b.id} size={80} />
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 17,
-                  fontWeight: isCurrent ? 700 : 400,
-                  color: isCurrent ? b.color : colors.character,
-                  marginTop: 12,
-                }}
-              >
-                {b.kanji} {b.name}
-              </div>
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 15,
-                  color: colors.romaji,
-                  marginTop: 4,
-                }}
-              >
-                {rangeText} chars
-              </div>
-              {isCurrent && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    width: "100%",
-                    height: 4,
-                    borderRadius: 2,
-                    background: colors.notStarted,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${progress * 100}%`,
-                      height: "100%",
-                      background: b.color,
-                      borderRadius: 2,
-                      transition: "width 0.3s",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Character grids — kana side by side */}
-      <div
-        className="char-grids"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 32,
-        }}
-      >
-        <CharGrid
-          title="Hiragana Overview"
-          chars={hiragana.map((k) => ({
-            char: k.char,
-            group: k.group,
-            sub: k.romaji,
-            label: k.romaji,
-          }))}
-          groups={hiraganaGroups}
-          records={records}
-        />
-        <CharGrid
-          title="Katakana Overview"
-          chars={katakana.map((k) => ({
-            char: k.char,
-            group: k.group,
-            sub: k.romaji,
-            label: k.romaji,
-          }))}
-          groups={katakanaGroups}
-          records={records}
-        />
-      </div>
-
-      {/* Kanji overview — full width */}
-      <div style={{ marginTop: 8 }}>
-        <CharGrid
-          title="Kanji Overview"
-          chars={kanji.map((k) => ({
-            char: k.char,
-            group: k.group,
-            sub: k.meaning,
-            label: k.meaning,
-          }))}
-          groups={kanjiGroups}
-          records={records}
-          showSub={false}
-        />
-      </div>
-
-      {/* Legend */}
-      <div
-        style={{
-          display: "flex",
-          gap: 20,
-          marginTop: 16,
-          fontFamily: font.mono,
-          fontSize: 16,
-          color: colors.romaji,
-        }}
-      >
-        <LegendItem color={colors.mastered} label="Mastered" />
-        <LegendItem color={colors.learning} label="Learning" />
-        <LegendItem color={colors.notStarted} label="Not started" />
-      </div>
-    </div>
-  );
-};
+  if (totalSeen === 0) return 0;
+  const onTarget = Object.values(records).filter(
+    (r) => r.lastQuality >= 1,
+  ).length;
+  return Math.round((onTarget / totalSeen) * 100);
+}
 
 const StatBlock: React.FC<{
   value: string | number;
@@ -368,3 +75,138 @@ const LegendItem: React.FC<{ color: string; label: string }> = ({
     {label}
   </span>
 );
+
+const StatsRow: React.FC<{
+  masteredCount: number;
+  streakCount: number;
+  accuracy: number;
+  dueCount: number;
+}> = ({ masteredCount, streakCount, accuracy, dueCount }) => (
+  <div
+    className="stats-row"
+    style={{
+      display: "flex",
+      gap: 40,
+      marginBottom: 40,
+      flexWrap: "wrap",
+    }}
+  >
+    <StatBlock value={masteredCount} label="Mastered" color={colors.accent} />
+    <StatBlock value={streakCount} label="Day Streak" color={colors.accent} />
+    <StatBlock value={`${accuracy}%`} label="Accuracy" color={colors.accent} />
+    <StatBlock
+      value={dueCount}
+      label="Due Today"
+      color={colors.accentDecor}
+      tooltip="Characters scheduled for review by spaced repetition. Quiz them to keep your memory fresh."
+    />
+  </div>
+);
+
+const kanaGridItems = (chars: typeof hiragana) =>
+  chars.map((k) => ({
+    char: k.char,
+    group: k.group,
+    sub: k.romaji,
+    label: k.romaji,
+  }));
+
+const OverviewGrids: React.FC<{
+  records: Record<string, ReviewRecord>;
+}> = ({ records }) => (
+  <>
+    {/* Character grids — kana side by side */}
+    <div
+      className="char-grids"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 32,
+      }}
+    >
+      <CharGrid
+        title="Hiragana Overview"
+        chars={kanaGridItems(hiragana)}
+        groups={hiraganaGroups}
+        records={records}
+      />
+      <CharGrid
+        title="Katakana Overview"
+        chars={kanaGridItems(katakana)}
+        groups={katakanaGroups}
+        records={records}
+      />
+    </div>
+
+    {/* Kanji overview — full width */}
+    <div style={{ marginTop: 8 }}>
+      <CharGrid
+        title="Kanji Overview"
+        chars={kanji.map((k) => ({
+          char: k.char,
+          group: k.group,
+          sub: k.meaning,
+          label: k.meaning,
+        }))}
+        groups={kanjiGroups}
+        records={records}
+        showSub={false}
+      />
+    </div>
+  </>
+);
+
+export const ProgressPage: React.FC = () => {
+  const records = getAllRecords();
+  const masteredCount = getMasteredCount();
+  const belt = getCurrentBelt(masteredCount);
+
+  return (
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 16px" }}>
+      <StatsRow
+        masteredCount={masteredCount}
+        streakCount={getStreak().count}
+        accuracy={accuracyPercent(records)}
+        dueCount={getDueCount()}
+      />
+
+      {/* Belt progression */}
+      <div
+        className="belt-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+          gap: 16,
+          marginBottom: 40,
+        }}
+      >
+        {BELTS.map((b) => (
+          <BeltCard
+            key={b.id}
+            belt={b}
+            isCurrent={b.id === belt.id}
+            masteredCount={masteredCount}
+          />
+        ))}
+      </div>
+
+      <OverviewGrids records={records} />
+
+      {/* Legend */}
+      <div
+        style={{
+          display: "flex",
+          gap: 20,
+          marginTop: 16,
+          fontFamily: font.mono,
+          fontSize: 16,
+          color: colors.romaji,
+        }}
+      >
+        <LegendItem color={colors.mastered} label="Mastered" />
+        <LegendItem color={colors.learning} label="Learning" />
+        <LegendItem color={colors.notStarted} label="Not started" />
+      </div>
+    </div>
+  );
+};
