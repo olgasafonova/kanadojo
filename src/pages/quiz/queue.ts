@@ -1,8 +1,30 @@
 import { hiragana } from "../../data/hiragana";
 import { katakana } from "../../data/katakana";
+import { kanji } from "../../data/kanji";
 import { isDue } from "../../srs/sm2";
 import { getAllRecords } from "../../store/progress";
-import type { KanaChar, KanaMode } from "../../data/types";
+import type { KanaChar, KanjiChar, Mode } from "../../data/types";
+
+export type QuizItem = KanaChar | KanjiChar;
+
+export function isKanjiItem(item: QuizItem): item is KanjiChar {
+  return (item as KanjiChar).meaning !== undefined;
+}
+
+/** The accepted answer(s) for an item, lowercased for comparison. */
+export function acceptedAnswers(item: QuizItem): string[] {
+  if (isKanjiItem(item)) {
+    return [item.meaning, ...(item.altMeanings ?? [])].map((m) =>
+      m.toLowerCase().trim(),
+    );
+  }
+  return [item.romaji.toLowerCase().trim()];
+}
+
+/** The canonical answer to reveal after a miss. */
+export function canonicalAnswer(item: QuizItem): string {
+  return isKanjiItem(item) ? item.meaning : item.romaji;
+}
 
 function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -13,8 +35,13 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-export function getQuizQueue(mode: KanaMode): KanaChar[] {
-  const chars = mode === "hiragana" ? hiragana : katakana;
+function poolForMode(mode: Mode): QuizItem[] {
+  if (mode === "kanji") return kanji;
+  return mode === "hiragana" ? hiragana : katakana;
+}
+
+export function getQuizQueue(mode: Mode): QuizItem[] {
+  const chars = poolForMode(mode);
   const records = getAllRecords();
 
   // Priority 1: due for review

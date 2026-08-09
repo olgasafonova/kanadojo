@@ -9,7 +9,7 @@ import {
   getDueCount,
 } from "../store/progress";
 import { isMastered } from "../srs/sm2";
-import { BELTS, getCurrentBelt } from "../components/BeltBadge";
+import { BELTS, getCurrentBelt } from "../data/belts";
 import { KimonoBelt } from "../components/KimonoBelt";
 
 interface GridItem {

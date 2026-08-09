@@ -3,7 +3,8 @@ import { LearnPage } from "./pages/LearnPage";
 import { QuizPage } from "./pages/QuizPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { AboutPage } from "./pages/AboutPage";
-import { BeltBadge, getCurrentBelt } from "./components/BeltBadge";
+import { BeltBadge } from "./components/BeltBadge";
+import { getCurrentBelt } from "./data/belts";
 import { getMasteredCount } from "./store/progress";
 import { colors, font } from "./styles/tokens";
 import type { Mode, Page } from "./data/types";
@@ -170,8 +171,8 @@ const App: React.FC = () => {
 
       {/* Page content */}
       <main id="main-content">
-        {page === "learn" && <LearnPage mode={mode} />}
-        {page === "quiz" && <QuizPage mode={mode} />}
+        {page === "learn" && <LearnPage key={mode} mode={mode} />}
+        {page === "quiz" && <QuizPage key={mode} mode={mode} />}
         {page === "progress" && <ProgressPage />}
         {page === "about" && <AboutPage />}
       </main>

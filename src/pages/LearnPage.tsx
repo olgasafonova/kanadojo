@@ -32,14 +32,9 @@ export const LearnPage: React.FC<Props> = ({ mode }) => {
       ? hiraganaGroups
       : katakanaGroups;
 
+  // Mode changes remount the page via key={mode} in App, so no reset effect.
   const [groupIdx, setGroupIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
-
-  // Reset when switching mode
-  useEffect(() => {
-    setGroupIdx(0);
-    setCharIdx(0);
-  }, [mode]);
 
   const group = groups[groupIdx];
   const groupChars = chars.filter((k) => k.group === group.id);
