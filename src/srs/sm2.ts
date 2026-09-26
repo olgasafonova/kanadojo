@@ -1,9 +1,10 @@
 import type { Quality, ReviewRecord } from "../data/types";
+import { localDateString } from "../utils/date";
 
 function addDays(date: Date, days: number): string {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
-  return result.toISOString().split("T")[0];
+  return localDateString(result);
 }
 
 export function createRecord(char: string): ReviewRecord {
@@ -11,7 +12,7 @@ export function createRecord(char: string): ReviewRecord {
     char,
     easeFactor: 2.5,
     interval: 0,
-    nextReview: new Date().toISOString().split("T")[0],
+    nextReview: localDateString(),
     repetitions: 0,
     lastQuality: 0,
   };
@@ -52,7 +53,7 @@ export function review(record: ReviewRecord, quality: Quality): ReviewRecord {
 }
 
 export function isDue(record: ReviewRecord): boolean {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateString();
   return record.nextReview <= today;
 }
 

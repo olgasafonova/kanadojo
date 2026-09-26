@@ -1,5 +1,6 @@
 import type { ReviewRecord } from "../data/types";
 import { createRecord } from "../srs/sm2";
+import { localDateString } from "../utils/date";
 
 const STORAGE_KEY = "kanadojo-progress";
 const STREAK_KEY = "kanadojo-streak";
@@ -45,8 +46,11 @@ export function getStreak(): { count: number; lastDate: string } {
 
 export function updateStreak(): void {
   const store = load();
-  const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const now = new Date();
+  const today = localDateString(now);
+  const previousDay = new Date(now);
+  previousDay.setDate(previousDay.getDate() - 1);
+  const yesterday = localDateString(previousDay);
 
   if (store.streak.lastDate === today) {
     // Already practiced today
@@ -68,7 +72,7 @@ export function getMasteredCount(): number {
 }
 
 export function getDueCount(): number {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateString();
   const records = getAllRecords();
   return Object.values(records).filter((r) => r.nextReview <= today).length;
 }
