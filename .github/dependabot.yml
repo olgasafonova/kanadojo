@@ -8,7 +8,21 @@ updates:
       day: "monday"
     commit-message:
       prefix: "deps"
+    ignore:
+      # typescript-eslint 8 accepts TypeScript below 6.1 only, so a TypeScript 7
+      # bump cannot install. Remove this once typescript-eslint supports it.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
     groups:
+      react:
+        # react and react-dom must share one version, and their type packages
+        # follow them. Bumping one alone cannot install.
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
       npm-dependencies:
         # Group minor and patch only. Majors get their own PR so they are
         # reviewable and never arrive inside a bump titled "N updates".
