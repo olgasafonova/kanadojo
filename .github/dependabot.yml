@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+    groups:
+      npm-dependencies:
+        # Group minor and patch only. Majors get their own PR so they are
+        # reviewable and never arrive inside a bump titled "N updates".
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+      remotion-major:
+        # remotion and @remotion/* must share one exact version, so a major
+        # bump of one alone cannot install. Keep them in a single PR.
+        update-types:
+          - "major"
+        patterns:
+          - "remotion"
+          - "@remotion/*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
